@@ -69,4 +69,4 @@
 
 Простыня со всеми запросами
 
-![sql_sakila](https://github.com/benli6/ben_sqld-5_reldb/blob/main/ben_sqld-5_sakila.sql)
+[sql_sakila](https://github.com/benli6/ben_sqld-5_reldb/blob/main/ben_sqld-5_sakila.sql)
