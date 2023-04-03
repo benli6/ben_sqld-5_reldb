@@ -34,14 +34,37 @@ where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and
 
 - оптимизируйте запрос: внесите корректировки по использованию операторов, при необходимости добавьте индексы.
 
-`В связи со всем вышеперечисленным я вижу самым оптимальным вариантом переписать запрос с нуля, чтобы, во-первых, достичь правильных данных, а во-вторых, за 22 милисекунды вместо 6 тысяч.`
+`В связи со всем вышеперечисленным я вижу самым оптимальным вариантом переписать запрос с нуля, чтобы, во-первых, достичь правильных данных, а во-вторых, за 22 миллисекунды вместо 6 тысяч.`
 
 ```sql
-select distinct concat(c.last_name, ' ', c.first_name), sum(p.amount)
+select concat(c.last_name, ' ', c.first_name), sum(p.amount)
 from customer c 
 join payment p on p.customer_id = c.customer_id 
 where date(p.payment_date) = '2005-07-30'
 group by 1
+```
+
+`С добавлением индекса по колонке с датой оплаты время запроса уменьшилось до 2,7 миллисекунд`
+
+```sql
+-- добавление индекса
+create index date_index
+on payment(payment_date);
+
+-- запрос
+select concat(c.last_name, ' ', c.first_name), sum(p.amount)
+from customer c
+join payment p using(customer_id)
+where p.payment_date >= '2005-07-30 00:00:00' and p.payment_date <= '2005-07-30 23:59:59'
+group by 1;
+
+-- explain analyze
+-> Limit: 200 row(s)  (actual time=2.668..2.697 rows=200 loops=1)
+    -> Table scan on <temporary>  (actual time=2.667..2.687 rows=200 loops=1)
+        -> Aggregate using temporary table  (actual time=2.667..2.667 rows=391 loops=1)
+            -> Nested loop inner join  (cost=507.46 rows=634) (actual time=0.029..2.013 rows=634 loops=1)
+                -> Index range scan on p using date_index over ('2005-07-30 00:00:00' <= payment_date <= '2005-07-30 23:59:59'), with index condition: ((p.payment_date >= TIMESTAMP'2005-07-30 00:00:00') and (p.payment_date <= TIMESTAMP'2005-07-30 23:59:59'))  (cost=285.56 rows=634) (actual time=0.022..1.139 rows=634 loops=1)
+                -> Single-row index lookup on c using PRIMARY (customer_id=p.customer_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=634)
 ```
 
 ---
